@@ -1,0 +1,88 @@
+### Variables globales (reemplaza los IDs con los que devuelva tu API)
+@baseUrl = http://localhost:8080/api
+@conductorId = 00000000-0000-0000-0000-000000000000
+@vehiculoId = 00000000-0000-0000-0000-000000000000
+@tiqueteId = 00000000-0000-0000-0000-000000000000
+
+### 1. Disponibilidad en tiempo real
+GET {{baseUrl}}/parqueadero/disponibilidad
+Accept: application/json
+
+### 2. Crear conductor
+POST {{baseUrl}}/conductores
+Content-Type: application/json
+
+{
+  "nombre": "Maria Gonzalez",
+  "identificacion": "1234567890",
+  "telefono": "3112223344",
+  "email": "maria@parqueadero.com"
+}
+
+### 3. Registrar automóvil (copia el id del conductor en @conductorId)
+POST {{baseUrl}}/vehiculos/automoviles
+Content-Type: application/json
+
+{
+  "placa": "ABC123",
+  "marca": "Toyota",
+  "modelo": "Corolla 2023",
+  "tarifaPorHora": 5000,
+  "conductorId": "{{conductorId}}",
+  "numeroPuertas": 4,
+  "esElectrico": true
+}
+
+### 4. Registrar motocicleta
+POST {{baseUrl}}/vehiculos/motocicletas
+Content-Type: application/json
+
+{
+  "placa": "XYZ789",
+  "marca": "Yamaha",
+  "modelo": "MT-03",
+  "tarifaPorHora": 2500,
+  "conductorId": "{{conductorId}}",
+  "cilindraje": 321,
+  "necesitaCasilleroCasco": true
+}
+
+### 5. Consulta polimórfica (cada elemento trae "tipo": AUTOMOVIL / MOTOCICLETA)
+GET {{baseUrl}}/vehiculos
+Accept: application/json
+
+### 6. Ingreso al parqueadero (crea tiquete ACTIVO)
+POST {{baseUrl}}/tiquetes
+Content-Type: application/json
+
+{
+  "conductorId": "{{conductorId}}",
+  "vehiculoId": "{{vehiculoId}}"
+}
+
+### 7. Registrar incidente
+POST {{baseUrl}}/incidentes
+Content-Type: application/json
+
+{
+  "tiqueteId": "{{tiqueteId}}",
+  "tipo": "RAYON",
+  "descripcion": "Rayón superficial en la puerta del conductor"
+}
+
+### 8. Finalizar tiquete (fechaSalida opcional, formato ISO sin zona)
+POST {{baseUrl}}/tiquetes/{{tiqueteId}}/finalizar?fechaSalida=2026-12-31T23:00:00
+
+### 9. Resumen del conductor (historial de tiquetes y gasto acumulado)
+GET {{baseUrl}}/conductores/{{conductorId}}/resumen
+Accept: application/json
+
+### 10. PATCH - actualización parcial segura (identificacion y activo se ignoran)
+PATCH {{baseUrl}}/conductores/{{conductorId}}
+Content-Type: application/json
+
+{
+  "nombre": "Nuevo Nombre Modificado",
+  "identificacion": "NO-DEBERIA-CAMBIAR",
+  "activo": false
+}

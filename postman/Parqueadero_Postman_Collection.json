@@ -1,0 +1,1372 @@
+{
+  "info": {
+    "name": "Parqueadero Spring Boot API",
+    "description": "Colección completa del sistema ParqueaderoSpringBoot.\n\nEjecútala en orden (Runner o request por request): los IDs se guardan solos en variables de colección y las identificaciones/placas se generan únicas, por lo que puede re-ejecutarse sin errores de duplicado.\n\nRequiere la app corriendo en http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "conductorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "identificacion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "placaAuto",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "placaMoto",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vehiculoAutoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vehiculoMotoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tiqueteAutoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tiqueteMotoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "incidenteId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fechaSalida",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fechaAhora",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ocupadasAutosAntes",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "ocupadasMotosAntes",
+      "value": "0",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Disponibilidad (estado inicial)",
+      "item": [
+        {
+          "name": "1.1 Consultar disponibilidad en tiempo real",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parqueadero/disponibilidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parqueadero",
+                "disponibilidad"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const d = pm.response.json();",
+                  "pm.test('Incluye capacidad y espacios', () => {",
+                  "  pm.expect(d).to.have.property('capacidadTotal');",
+                  "  pm.expect(d).to.have.property('espaciosLibres');",
+                  "  pm.expect(d.disponiblesAutomoviles).to.be.at.least(0);",
+                  "  pm.expect(d.disponiblesMotocicletas).to.be.at.least(0);",
+                  "});",
+                  "pm.collectionVariables.set('ocupadasAutosAntes', d.ocupadasAutomoviles);",
+                  "pm.collectionVariables.set('ocupadasMotosAntes', d.ocupadasMotocicletas);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Conductores",
+      "item": [
+        {
+          "name": "2.1 Crear conductor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conductores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Maria Gonzalez\",\n  \"identificacion\": \"{{identificacion}}\",\n  \"telefono\": \"3112223344\",\n  \"email\": \"maria@parqueadero.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Genera una identificación única para poder re-ejecutar la colección sin choques (409)",
+                  "const n = Date.now().toString().slice(-8);",
+                  "pm.collectionVariables.set('identificacion', 'CC' + n);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('conductorId', j.id);",
+                  "pm.test('Conductor activo y con ID', () => { pm.expect(j.id).to.be.a('string'); pm.expect(j.activo).to.eql(true); });",
+                  "pm.test('Header Location apunta al recurso', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/conductores/'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Listar conductores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conductores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Obtener conductor por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/{{conductorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "{{conductorId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mismo ID', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('conductorId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 PATCH - actualización parcial (nombre y email)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/{{conductorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "{{conductorId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Maria G. Torres\",\n  \"email\": \"maria_nueva@email.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Solo se modifican los campos presentes en el JSON; los omitidos (null) se conservan."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.test('Campos enviados cambian', () => { pm.expect(j.nombre).to.eql('Maria G. Torres'); pm.expect(j.email).to.eql('maria_nueva@email.com'); });",
+                  "pm.test('Teléfono no enviado se conserva', () => pm.expect(j.telefono).to.eql('3112223344'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 PATCH - intento de asignación masiva (identificacion / activo)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/{{conductorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "{{conductorId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3000000000\",\n  \"identificacion\": \"HACKEADO\",\n  \"activo\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Demuestra la protección contra mass-assignment: el DTO de PATCH solo expone nombre, telefono y email."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.test('Teléfono sí se actualiza', () => pm.expect(j.telefono).to.eql('3000000000'));",
+                  "pm.test('identificacion NO cambia', () => pm.expect(j.identificacion).to.eql(pm.collectionVariables.get('identificacion')));",
+                  "pm.test('activo NO cambia', () => pm.expect(j.activo).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Vehículos (polimórfico)",
+      "item": [
+        {
+          "name": "3.1 Registrar automóvil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos/automoviles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos",
+                "automoviles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"{{placaAuto}}\",\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla 2023\",\n  \"tarifaPorHora\": 5000,\n  \"conductorId\": \"{{conductorId}}\",\n  \"numeroPuertas\": 4,\n  \"esElectrico\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('placaAuto', 'AUT' + Date.now().toString().slice(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('vehiculoAutoId', j.id);",
+                  "pm.test('tipo = AUTOMOVIL', () => pm.expect(j.tipo).to.eql('AUTOMOVIL'));",
+                  "pm.test('Campos propios de automóvil', () => { pm.expect(j.numeroPuertas).to.eql(4); pm.expect(j.esElectrico).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Registrar motocicleta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos/motocicletas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos",
+                "motocicletas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"{{placaMoto}}\",\n  \"marca\": \"Yamaha\",\n  \"modelo\": \"MT-03\",\n  \"tarifaPorHora\": 2500,\n  \"conductorId\": \"{{conductorId}}\",\n  \"cilindraje\": 321,\n  \"necesitaCasilleroCasco\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('placaMoto', 'MOT' + Date.now().toString().slice(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('vehiculoMotoId', j.id);",
+                  "pm.test('tipo = MOTOCICLETA', () => pm.expect(j.tipo).to.eql('MOTOCICLETA'));",
+                  "pm.test('Campos propios de motocicleta', () => { pm.expect(j.cilindraje).to.eql(321); pm.expect(j.necesitaCasilleroCasco).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Listar vehículos (consulta polimórfica)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const tipos = pm.response.json().map(v => v.tipo);",
+                  "pm.test('Incluye AUTOMOVIL y MOTOCICLETA con discriminador \"tipo\"', () => { pm.expect(tipos).to.include('AUTOMOVIL'); pm.expect(tipos).to.include('MOTOCICLETA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Obtener vehículo por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos/{{vehiculoAutoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos",
+                "{{vehiculoAutoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el automóvil', () => pm.expect(pm.response.json().tipo).to.eql('AUTOMOVIL'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Tiquetes (ingreso al parqueadero)",
+      "item": [
+        {
+          "name": "4.1 Ingreso del automóvil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conductorId\": \"{{conductorId}}\",\n  \"vehiculoId\": \"{{vehiculoAutoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('tiqueteAutoId', j.id);",
+                  "pm.test('Estado ACTIVO y cobro 0', () => { pm.expect(j.estado).to.eql('ACTIVO'); pm.expect(j.cobroFinal).to.eql(0); });",
+                  "pm.test('Tipo de vehículo', () => pm.expect(j.tipoVehiculo).to.eql('AUTOMOVIL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Ingreso de la motocicleta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conductorId\": \"{{conductorId}}\",\n  \"vehiculoId\": \"{{vehiculoMotoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('tiqueteMotoId', j.id);",
+                  "pm.test('Estado ACTIVO', () => pm.expect(j.estado).to.eql('ACTIVO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Listar tiquetes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Obtener tiquete por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes/{{tiqueteAutoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes",
+                "{{tiqueteAutoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mismo ID', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('tiqueteAutoId')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Disponibilidad (con vehículos dentro)",
+      "item": [
+        {
+          "name": "5.1 Consultar disponibilidad en tiempo real",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parqueadero/disponibilidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parqueadero",
+                "disponibilidad"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const d = pm.response.json();",
+                  "pm.test('Ocupadas autos aumentó en 1', () => pm.expect(d.ocupadasAutomoviles).to.eql(Number(pm.collectionVariables.get('ocupadasAutosAntes')) + 1));",
+                  "pm.test('Ocupadas motos aumentó en 1', () => pm.expect(d.ocupadasMotocicletas).to.eql(Number(pm.collectionVariables.get('ocupadasMotosAntes')) + 1));",
+                  "pm.test('Totales consistentes', () => {",
+                  "  pm.expect(d.celdasOcupadas).to.eql(d.ocupadasAutomoviles + d.ocupadasMotocicletas);",
+                  "  pm.expect(d.espaciosLibres).to.eql(d.capacidadTotal - d.celdasOcupadas);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Incidentes",
+      "item": [
+        {
+          "name": "6.1 Registrar incidente - RAYON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tiqueteId\": \"{{tiqueteAutoId}}\",\n  \"tipo\": \"RAYON\",\n  \"descripcion\": \"Rayón superficial en la puerta del conductor mientras salía otro vehículo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('incidenteId', j.id);",
+                  "pm.test('Tipo y placa correctos', () => { pm.expect(j.tipo).to.eql('RAYON'); pm.expect(j.placaVehiculo).to.eql(pm.collectionVariables.get('placaAuto')); });",
+                  "pm.test('Vinculado al tiquete', () => pm.expect(j.tiqueteId).to.eql(pm.collectionVariables.get('tiqueteAutoId')));",
+                  "pm.test('Fecha/hora asignada automáticamente', () => pm.expect(j.fechaHora).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Registrar incidente - CHOQUE (con fecha explícita)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tiqueteId\": \"{{tiqueteMotoId}}\",\n  \"tipo\": \"CHOQUE\",\n  \"descripcion\": \"Choque leve en la zona de motos\",\n  \"fechaHora\": \"{{fechaAhora}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); const p = n => String(n).padStart(2, '0');",
+                  "pm.collectionVariables.set('fechaAhora', d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Tipo CHOQUE', () => pm.expect(pm.response.json().tipo).to.eql('CHOQUE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 Listar incidentes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay al menos 2', () => pm.expect(pm.response.json().length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 Obtener incidente por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes/{{incidenteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes",
+                "{{incidenteId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mismo ID', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('incidenteId')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Salida y cobro",
+      "item": [
+        {
+          "name": "7.1 Finalizar tiquete de la moto (fecha de salida +2h)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes/{{tiqueteMotoId}}/finalizar?fechaSalida={{fechaSalida}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes",
+                "{{tiqueteMotoId}}",
+                "finalizar"
+              ],
+              "query": [
+                {
+                  "key": "fechaSalida",
+                  "value": "{{fechaSalida}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// fechaSalida en formato ISO local (sin zona), p.ej. 2026-10-06T15:30:00",
+                  "const d = new Date(Date.now() + 2 * 3600 * 1000); const p = n => String(n).padStart(2, '0');",
+                  "pm.collectionVariables.set('fechaSalida', d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.test('FINALIZADO con cobro > 0', () => { pm.expect(j.estado).to.eql('FINALIZADO'); pm.expect(j.cobroFinal).to.be.above(0); });",
+                  "pm.test('Cobro es múltiplo de la tarifa (2500/h)', () => pm.expect(j.cobroFinal % 2500).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.2 Finalizar tiquete del automóvil (hora actual)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes/{{tiqueteAutoId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes",
+                "{{tiqueteAutoId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.test('FINALIZADO, mínimo 1 hora cobrada', () => { pm.expect(j.estado).to.eql('FINALIZADO'); pm.expect(j.cobroFinal).to.be.at.least(5000); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Resumen y estado final",
+      "item": [
+        {
+          "name": "8.1 Resumen del conductor (historial + gasto acumulado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/{{conductorId}}/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "{{conductorId}}",
+                "resumen"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.test('2 tiquetes en el historial', () => { pm.expect(j.totalTiquetesRealizados).to.eql(2); pm.expect(j.historialTiquetes.length).to.eql(2); });",
+                  "pm.test('Gasto acumulado = suma de cobros', () => {",
+                  "  const suma = j.historialTiquetes.reduce((a, t) => a + t.cobroFinal, 0);",
+                  "  pm.expect(j.montoTotalGastado).to.eql(suma);",
+                  "  pm.expect(j.montoTotalGastado).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.2 Disponibilidad final (celdas liberadas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parqueadero/disponibilidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parqueadero",
+                "disponibilidad"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const d = pm.response.json();",
+                  "pm.test('Volvió al nivel inicial', () => {",
+                  "  pm.expect(d.ocupadasAutomoviles).to.eql(Number(pm.collectionVariables.get('ocupadasAutosAntes')));",
+                  "  pm.expect(d.ocupadasMotocicletas).to.eql(Number(pm.collectionVariables.get('ocupadasMotosAntes')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Casos de error (validaciones)",
+      "item": [
+        {
+          "name": "9.1 Conductor inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Cuerpo de error', () => pm.expect(pm.response.json()).to.have.property('mensaje'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.2 UUID mal formado -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conductores/no-es-un-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores",
+                "no-es-un-uuid"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.3 Conductor sin datos obligatorios -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conductores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"identificacion\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Trae detalles por campo', () => pm.expect(pm.response.json().detalles.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.4 Identificación duplicada -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conductores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conductores"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Otro Nombre\",\n  \"identificacion\": \"{{identificacion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.5 Placa duplicada -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos/automoviles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos",
+                "automoviles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"{{placaAuto}}\",\n  \"marca\": \"Kia\",\n  \"modelo\": \"Rio\",\n  \"tarifaPorHora\": 4000,\n  \"conductorId\": \"{{conductorId}}\",\n  \"numeroPuertas\": 4,\n  \"esElectrico\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.6 Automóvil con 0 puertas -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehiculos/automoviles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehiculos",
+                "automoviles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"ERR001\",\n  \"marca\": \"Kia\",\n  \"modelo\": \"Rio\",\n  \"tarifaPorHora\": 4000,\n  \"conductorId\": \"{{conductorId}}\",\n  \"numeroPuertas\": 0,\n  \"esElectrico\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.7 Finalizar un tiquete ya finalizado -> 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiquetes/{{tiqueteMotoId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiquetes",
+                "{{tiqueteMotoId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.8 Incidente con tipo inválido -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tiqueteId\": \"{{tiqueteAutoId}}\",\n  \"tipo\": \"INVENTADO\",\n  \"descripcion\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.9 Incidente sobre tiquete inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/incidentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidentes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tiqueteId\": \"00000000-0000-0000-0000-000000000000\",\n  \"tipo\": \"CHOQUE\",\n  \"descripcion\": \"Choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
